@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: ${DB_USER:-admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-admin123}
       POSTGRES_DB: ${DB_NAME:-sensor_dashboard}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -20,8 +18,6 @@ services:
       DATABASE_URL: postgresql+psycopg://${DB_USER:-admin}:${DB_PASSWORD:-admin123}@db:5432/${DB_NAME:-sensor_dashboard}
     depends_on:
       - db
-    ports:
-      - "8000:8000"
 
   frontend:
     build:
@@ -31,6 +27,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${DB_USER:-admin}:${DB_PASSWORD:-admin123}@db:5432/${DB_NAME:-sensor_dashboard}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      SENSOR_API_KEY: ${SENSOR_API_KEY}
     depends_on:
       - backend
     ports:
@@ -43,7 +40,8 @@ services:
     container_name: sensor-simulator
     environment:
       DATABASE_URL: postgresql+psycopg://${DB_USER:-admin}:${DB_PASSWORD:-admin123}@db:5432/${DB_NAME:-sensor_dashboard}
-      API_URL: http://backend:8000
+      API_URL: http://frontend:3000/api/ingest
+      SENSOR_API_KEY: ${SENSOR_API_KEY}
     depends_on:
       - backend
     command: ["/app/.venv/bin/python", "-m", "app.simulator"]

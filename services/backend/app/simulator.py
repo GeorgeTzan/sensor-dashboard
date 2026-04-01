@@ -6,7 +6,8 @@ from sqlmodel import Session, select
 from app.db import engine
 from app.models import Sensor
 
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+API_URL = os.getenv("API_URL", "http://localhost:3000/api/ingest")
+SENSOR_API_KEY = os.getenv("SENSOR_API_KEY")
 
 def get_sensor_ids():
     with Session(engine) as session:
@@ -20,12 +21,14 @@ def run_simulator():
     if not sensor_ids:
         return
 
+    headers = {"X-Sensor-API-Key": SENSOR_API_KEY}
+
     while True:
         for s_id in sensor_ids:
             value = round(random.uniform(15.0, 35.0), 2)
             payload = {"sensor_id": s_id, "value": value}
             try:
-                requests.post(f"{API_URL}/measurements/ingest", json=payload)
+                requests.post(API_URL, json=payload, headers=headers)
             except Exception:
                 pass
         time.sleep(3)
