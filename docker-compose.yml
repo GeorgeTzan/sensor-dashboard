@@ -36,5 +36,17 @@ services:
     ports:
       - "3000:3000"
 
+  simulator:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    container_name: sensor-simulator
+    environment:
+      DATABASE_URL: postgresql+psycopg://${DB_USER:-admin}:${DB_PASSWORD:-admin123}@db:5432/${DB_NAME:-sensor_dashboard}
+      API_URL: http://backend:8000
+    depends_on:
+      - backend
+    command: ["/app/.venv/bin/python", "-m", "app.simulator"]
+
 volumes:
   postgres_data:
