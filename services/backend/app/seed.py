@@ -1,8 +1,6 @@
-from sqlmodel import Session, create_engine, SQLModel
+from sqlmodel import Session, SQLModel
+from app.db import engine
 from app.models import Sensor, Measurement
-import os
-
-engine = create_engine(os.getenv("DATABASE_URL"), echo=True)
 
 def seed_data():
     SQLModel.metadata.create_all(engine)
