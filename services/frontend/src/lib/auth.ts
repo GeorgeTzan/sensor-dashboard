@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth"
+import { admin } from "better-auth/plugins"
 import pg from "pg"
 
 const pool = new pg.Pool({
@@ -10,4 +11,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  plugins: [
+    admin()
+  ]
 })
