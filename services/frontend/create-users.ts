@@ -3,7 +3,7 @@ import pg from "pg"
 
 const auth = betterAuth({
   database: new pg.Pool({
-    connectionString: "postgresql://admin:9d7de2b87a20cab4b04d5e540c7712fd@localhost:5432/sensor_dashboard",
+    connectionString: "postgresql://admin:9d7de2b87a20cab4b04d5e540c7712fd@db:5432/sensor_dashboard",
   }),
   emailAndPassword: {
     enabled: true,

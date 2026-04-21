@@ -25,7 +25,7 @@ services:
       dockerfile: Dockerfile
     container_name: sensor-frontend
     environment:
-      DATABASE_URL: postgresql+psycopg://${DB_USER:-admin}:${DB_PASSWORD:-admin123}@db:5432/${DB_NAME:-sensor_dashboard}
+      DATABASE_URL: postgresql://${DB_USER:-admin}:${DB_PASSWORD:-admin123}@db:5432/${DB_NAME:-sensor_dashboard}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: http://localhost:3000
       SENSOR_API_KEY: ${SENSOR_API_KEY}
