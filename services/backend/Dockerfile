@@ -6,6 +6,8 @@ WORKDIR /app
 
 COPY .python-version pyproject.toml uv.lock ./
 
+ENV UV_HTTP_TIMEOUT=120
+
 RUN uv sync --frozen --no-cache
 
 COPY app ./app
