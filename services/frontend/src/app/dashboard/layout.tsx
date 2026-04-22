@@ -1,13 +1,26 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { LayoutDashboard, Radio, Users, LogOut } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, Radio, Users, LogOut, Loader2 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
+import { useEffect, useState } from "react"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { data: session } = authClient.useSession()
+  const router = useRouter()
+  const { data: session, isPending } = authClient.useSession()
+  const [isAuthorizing, setIsAuthorizing] = useState(true)
+
+  useEffect(() => {
+    if (!isPending) {
+      if (!session) {
+        router.push("/login")
+      } else {
+        setIsAuthorizing(false)
+      }
+    }
+  }, [session, isPending, router])
 
   const links = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -23,6 +36,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         },
       },
     })
+  }
+
+  if (isPending || isAuthorizing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B1120]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#06b6d4]" />
+      </div>
+    )
   }
 
   return (

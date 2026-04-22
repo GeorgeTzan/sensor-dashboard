@@ -67,7 +67,7 @@ export default function SensorsPage() {
       <div className="rounded-lg border border-slate-700 bg-[#1E293B] overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
           <h3 className="text-sm font-semibold text-slate-200">Active Sensors</h3>
-          {session?.user?.role === "admin" && (
+          {((session?.user as any)?.role === "admin") && (
             <button
               onClick={() => setIsDrawerOpen(true)}
               className="flex items-center gap-1.5 rounded bg-[#06b6d4] px-3 py-1.5 text-xs font-semibold text-[#0f172a] hover:bg-[#0891b2] transition-colors"
@@ -133,14 +133,14 @@ export default function SensorsPage() {
         )}
       </div>
 
-      {session?.user?.role === "admin" && isDrawerOpen && (
+      {((session?.user as any)?.role === "admin") && isDrawerOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/50 transition-opacity"
           onClick={() => setIsDrawerOpen(false)}
         />
       )}
 
-      {session?.user?.role === "admin" && (
+      {((session?.user as any)?.role === "admin") && (
         <div
           className={`fixed inset-y-0 right-0 z-50 w-full max-w-md transform bg-[#1E293B] border-l border-slate-700 p-6 shadow-xl transition-transform duration-300 ease-in-out ${
             isDrawerOpen ? "translate-x-0" : "translate-x-full"

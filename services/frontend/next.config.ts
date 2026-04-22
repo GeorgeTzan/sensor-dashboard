@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    allowedDevOrigins: ["sensor.orailab.gr", "localhost:3000"],
+  },
 };
 
 export default nextConfig;

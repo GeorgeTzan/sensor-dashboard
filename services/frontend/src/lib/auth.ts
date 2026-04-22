@@ -8,6 +8,21 @@ const pool = new pg.Pool({
 
 export const auth = betterAuth({
   database: pool,
+  trustedOrigins: ["http://localhost:3000", "https://sensor.orailab.gr", "http://sensor.orailab.gr"],
+  advanced: { 
+    useRuntimeURL: true,
+  },
+  session: {
+    cookieCache: {
+        enabled: true,
+        maxBatchSize: 100
+    },
+    cookieOptions: {
+      domain: "sensor.orailab.gr",
+      secure: true,
+      sameSite: "lax"
+    }
+  },
   emailAndPassword: {
     enabled: true,
   },

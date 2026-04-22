@@ -19,7 +19,7 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   useEffect(() => {
-    if (!sessionPending && session && session.user.role !== "admin") {
+    if (!sessionPending && session && (session.user as any).role !== "admin") {
       window.location.href = "/dashboard"
     }
   }, [session, sessionPending])
@@ -43,7 +43,7 @@ export default function UsersPage() {
     setTimeout(() => setSelectedUser(null), 300)
   }
 
-  if (sessionPending || (session && session.user.role !== "admin")) {
+  if (sessionPending || (session && (session.user as any).role !== "admin")) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-[#06b6d4]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -103,7 +103,7 @@ export default function UsersPage() {
                     <td className="px-4 py-2">
                       <span className="flex items-center gap-1 text-xs text-slate-300">
                         <Shield className="h-3 w-3 text-[#06b6d4]" />
-                        {user.role || 'User'}
+                        {(user as any).role || 'User'}
                       </span>
                     </td>
                     <td className="px-4 py-2">
@@ -172,7 +172,7 @@ export default function UsersPage() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-400">Clearance Level</label>
                 <select 
-                  defaultValue={selectedUser?.role || "Viewer"}
+                  defaultValue={(selectedUser as any)?.role || "Viewer"}
                   className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4]"
                 >
                   <option value="Administrator">Administrator</option>
