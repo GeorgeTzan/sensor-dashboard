@@ -1,25 +1,32 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Edit2, X, UserPlus, Shield, Loader2 } from "lucide-react"
-import { useQuery } from "@tanstack/react-query"
+import { Edit2, X, UserPlus, Shield, Loader2, Trash2 } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
 
 interface User {
-  id: string | number
+  id: string
   name: string
   email: string
   role: string
-  status: string
 }
 
 export default function UsersPage() {
+  const queryClient = useQueryClient()
   const { data: session, isPending: sessionPending } = authClient.useSession()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "user"
+  })
 
   useEffect(() => {
-    if (!sessionPending && session && (session.user as any).role !== "admin") {
+    if (!sessionPending && session && session.user?.role !== "admin") {
       window.location.href = "/dashboard"
     }
   }, [session, sessionPending])
@@ -27,23 +34,92 @@ export default function UsersPage() {
   const { data: users, isLoading, error } = useQuery<User[]>({
     queryKey: ["users"],
     queryFn: async () => {
-      const res = await fetch("/api/proxy/users")
-      if (!res.ok) throw new Error("Failed to fetch")
-      return res.json()
+        const res = await authClient.admin.listUsers({
+            query: { limit: 100 }
+        })
+        if (res.error) throw new Error(res.error.message)
+        return res.data.users.map(u => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role || 'user'
+        }))
+    }
+  })
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+        const res = await authClient.admin.createUser({
+            email: data.email,
+            password: data.password,
+            name: data.name,
+            role: data.role
+        })
+        if (res.error) throw new Error(res.error.message)
+        return res.data
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["users"] })
+        handleClose()
+    }
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+        if (!selectedUser) return
+        const res = await authClient.admin.setRole({
+            userId: selectedUser.id,
+            role: data.role
+        })
+        if (res.error) throw new Error(res.error.message)
+        return res.data
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["users"] })
+        handleClose()
+    }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: string) => {
+        const res = await authClient.admin.removeUser({ userId })
+        if (res.error) throw new Error(res.error.message)
+        return res.data
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["users"] })
     }
   })
 
   const handleEdit = (user: User) => {
     setSelectedUser(user)
+    setFormData({
+        name: user.name,
+        email: user.email,
+        password: "",
+        role: user.role
+    })
     setIsDrawerOpen(true)
   }
 
   const handleClose = () => {
     setIsDrawerOpen(false)
-    setTimeout(() => setSelectedUser(null), 300)
+    setTimeout(() => {
+        setSelectedUser(null)
+        setFormData({ name: "", email: "", password: "", role: "user" })
+    }, 300)
   }
 
-  if (sessionPending || (session && (session.user as any).role !== "admin")) {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedUser) {
+        updateMutation.mutate(formData)
+    } else {
+        createMutation.mutate(formData)
+    }
+  }
+
+  if (sessionPending || (session && session.user?.role !== "admin")) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-[#06b6d4]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -73,57 +149,51 @@ export default function UsersPage() {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-slate-700 bg-[#0f172a] text-xs font-semibold text-slate-400">
-                <th className="px-4 py-2">ID</th>
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Email</th>
                 <th className="px-4 py-2">Clearance</th>
-                <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Loading personnel data...</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400">Loading personnel data...</td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-rose-400">Failed to load personnel data</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-rose-400">Failed to load personnel data</td>
                 </tr>
               ) : users?.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">No personnel found</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400">No personnel found</td>
                 </tr>
               ) : (
                 users?.map((user) => (
                   <tr key={user.id} className="hover:bg-[#0B1120] transition-colors">
-                    <td className="px-4 py-2 font-mono text-xs text-slate-400">{user.id}</td>
                     <td className="px-4 py-2 font-medium text-slate-200">{user.name}</td>
                     <td className="px-4 py-2 text-slate-400">{user.email}</td>
                     <td className="px-4 py-2">
                       <span className="flex items-center gap-1 text-xs text-slate-300">
                         <Shield className="h-3 w-3 text-[#06b6d4]" />
-                        {(user as any).role || 'User'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-                        (user.status || 'Active') === 'Active' 
-                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
-                          : user.status === 'Offline'
-                          ? 'border-slate-500/20 bg-slate-500/10 text-slate-400'
-                          : 'border-rose-500/20 bg-rose-500/10 text-rose-400'
-                      }`}>
-                        {user.status || 'Active'}
+                        {user.role}
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <button 
-                        onClick={() => handleEdit(user)}
-                        className="inline-flex items-center justify-center rounded p-1 text-slate-400 transition-colors hover:bg-[#0f172a] hover:text-[#06b6d4]"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                            onClick={() => handleEdit(user)}
+                            className="p-1.5 text-slate-400 hover:text-[#06b6d4] transition-colors"
+                        >
+                            <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button 
+                            onClick={() => { if(confirm("Remove this user?")) deleteMutation.mutate(user.id) }}
+                            className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -152,51 +222,59 @@ export default function UsersPage() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-6">
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleClose(); }}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-400">Full Name</label>
                 <input 
                   type="text" 
-                  defaultValue={selectedUser?.name}
-                  className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4]"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  disabled={!!selectedUser}
+                  className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4] disabled:opacity-50"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-400">Email Address</label>
                 <input 
                   type="email" 
-                  defaultValue={selectedUser?.email}
-                  className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4]"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  disabled={!!selectedUser}
+                  className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4] disabled:opacity-50"
                 />
               </div>
+              {!selectedUser && (
+                <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-400">Initial Password</label>
+                    <input 
+                        type="password" 
+                        required
+                        value={formData.password}
+                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4]"
+                    />
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-400">Clearance Level</label>
                 <select 
-                  defaultValue={(selectedUser as any)?.role || "Viewer"}
+                  value={formData.role}
+                  onChange={(e) => setFormData({...formData, role: e.target.value})}
                   className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4]"
                 >
-                  <option value="Administrator">Administrator</option>
-                  <option value="Operator">Operator</option>
-                  <option value="Viewer">Viewer</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Status</label>
-                <select 
-                  defaultValue={selectedUser?.status || "Active"}
-                  className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4]"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Offline">Offline</option>
-                  <option value="Suspended">Suspended</option>
+                  <option value="admin">Administrator</option>
+                  <option value="user">Operator</option>
                 </select>
               </div>
               <div className="pt-4">
                 <button 
                   type="submit"
-                  className="w-full rounded-md bg-[#06b6d4] px-4 py-2 text-sm font-medium text-[#0f172a] transition-colors hover:bg-cyan-400"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="w-full rounded-md bg-[#06b6d4] px-4 py-2 text-sm font-medium text-[#0f172a] transition-colors hover:bg-cyan-400 disabled:opacity-50"
                 >
-                  Save Changes
+                  {(createMutation.isPending || updateMutation.isPending) ? "Syncing..." : selectedUser ? "Save Changes" : "Provision User"}
                 </button>
               </div>
             </form>

@@ -2,7 +2,9 @@
 
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Activity, Thermometer, Droplets, AlertTriangle, PieChart as PieChartIcon, BarChart3 } from "lucide-react"
+import { Activity, Thermometer, Droplets, AlertTriangle, PieChart as PieChartIcon, BarChart3, ArrowRight, Shield, Users as UsersIcon } from "lucide-react"
+import Link from "next/link"
+import { authClient } from "@/lib/auth-client"
 import {
   PieChart,
   Pie,
@@ -21,6 +23,14 @@ interface Sensor {
   name: string
   description: string
   type: string
+  categories: { id: string, name: string }[]
+}
+
+interface User {
+  id: string
+  name: string
+  email: string
+  role: string
 }
 
 const fetchSensors = async (): Promise<Sensor[]> => {
@@ -29,10 +39,25 @@ const fetchSensors = async (): Promise<Sensor[]> => {
   return res.json()
 }
 
+const fetchUsers = async (): Promise<User[]> => {
+  const res = await fetch("/api/proxy/users")
+  if (!res.ok) throw new Error("Failed to fetch users")
+  return res.json()
+}
+
 export default function DashboardPage() {
+  const { data: session } = authClient.useSession()
+  const isAdmin = session?.user?.role === "admin"
+
   const { data: sensors } = useQuery({
     queryKey: ["sensors"],
     queryFn: fetchSensors
+  })
+
+  const { data: users } = useQuery({
+    queryKey: ["users"],
+    queryFn: fetchUsers,
+    enabled: isAdmin
   })
 
   const totalSensors = sensors?.length || 0
@@ -115,7 +140,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-lg border border-slate-700 bg-[#1E293B] p-4">
           <div className="mb-4 flex items-center gap-2">
             <PieChartIcon className="h-5 w-5 text-[#0ea5e9]" />
@@ -177,6 +202,90 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="rounded-lg border border-slate-700 bg-[#1E293B] overflow-hidden">
+          <div className="border-b border-slate-700 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-[#06b6d4]" />
+              <h3 className="text-sm font-semibold text-slate-200">Sensors Directory</h3>
+            </div>
+            <Link href="/dashboard/sensors" className="text-xs font-medium text-[#06b6d4] hover:underline">View All</Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 bg-[#0f172a] text-xs font-semibold text-slate-400">
+                  <th className="px-4 py-2">Node Name</th>
+                  <th className="px-4 py-2">Categories</th>
+                  <th className="px-4 py-2 text-right">Telemetry</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {sensors?.slice(0, 5).map((sensor) => (
+                  <tr key={sensor.id} className="hover:bg-[#0B1120] transition-colors">
+                    <td className="px-4 py-2">
+                      <div className="font-medium text-slate-200">{sensor.name}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">{sensor.id}</div>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-1">
+                        {sensor.categories?.map(c => (
+                          <span key={c.id} className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px] text-slate-300 border border-slate-700">
+                            {c.name}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Link href={`/dashboard/sensors/${sensor.id}`} className="text-[#06b6d4] hover:text-cyan-400 inline-flex items-center gap-1 text-xs">
+                        Details <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {isAdmin && (
+          <div className="rounded-lg border border-slate-700 bg-[#1E293B] overflow-hidden">
+            <div className="border-b border-slate-700 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UsersIcon className="h-4 w-4 text-[#06b6d4]" />
+                <h3 className="text-sm font-semibold text-slate-200">Active Personnel</h3>
+              </div>
+              <Link href="/dashboard/users" className="text-xs font-medium text-[#06b6d4] hover:underline">Manage Access</Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-700 bg-[#0f172a] text-xs font-semibold text-slate-400">
+                    <th className="px-4 py-2">Name</th>
+                    <th className="px-4 py-2">Email</th>
+                    <th className="px-4 py-2">Role</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700">
+                  {users?.slice(0, 5).map((user) => (
+                    <tr key={user.id} className="hover:bg-[#0B1120] transition-colors">
+                      <td className="px-4 py-2 font-medium text-slate-200">{user.name}</td>
+                      <td className="px-4 py-2 text-slate-400">{user.email}</td>
+                      <td className="px-4 py-2">
+                        <span className="flex items-center gap-1 text-xs text-slate-300">
+                          <Shield className="h-3 w-3 text-[#06b6d4]" />
+                          {user.role}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

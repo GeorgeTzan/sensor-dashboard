@@ -1,9 +1,9 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { ArrowLeft, Activity, Database, Loader2, AlertTriangle, Radio } from "lucide-react"
+import { ArrowLeft, Activity, Database, Loader2, AlertTriangle, Radio, Clock } from "lucide-react"
 import Link from "next/link"
 
 interface Measurement {
@@ -19,24 +19,31 @@ interface SensorDetails {
   measurements: Measurement[]
 }
 
-const fetchSensorDetails = async (id: string): Promise<SensorDetails> => {
-  const res = await fetch(`/api/proxy/sensors/${id}`)
+const fetchSensorDetails = async (id: string, resolution: string): Promise<SensorDetails> => {
+  const res = await fetch(`/api/proxy/sensors/${id}?resolution=${resolution}`)
   if (!res.ok) throw new Error("Failed to fetch sensor details")
   return res.json()
 }
 
 export default function SensorDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params)
+  const [resolution, setResolution] = useState("hour")
 
   const { data: sensor, isLoading, isError } = useQuery({
-    queryKey: ["sensor", id],
-    queryFn: () => fetchSensorDetails(id),
+    queryKey: ["sensor", id, resolution],
+    queryFn: () => fetchSensorDetails(id, resolution),
     refetchInterval: 3000,
     enabled: !!id
   })
 
   const formatTime = (isoString: string) => {
     const date = new Date(isoString)
+    if (resolution === "month") {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    }
+    if (resolution === "day") {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   }
 
@@ -95,12 +102,26 @@ export default function SensorDetailsPage({ params }: { params: Promise<{ id: st
             <p className="text-xs font-mono text-slate-500 mt-1">ID: {sensor.id}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-md border border-slate-700 bg-[#1E293B] px-3 py-1.5 text-sm font-medium text-slate-200">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-          </span>
-          Live Feed Active
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 rounded-md border border-slate-700 bg-[#0f172a] px-3 py-1">
+                <Clock className="h-4 w-4 text-slate-400" />
+                <select 
+                    value={resolution}
+                    onChange={(e) => setResolution(e.target.value)}
+                    className="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer"
+                >
+                    <option value="hour" className="bg-[#0f172a]">Hourly</option>
+                    <option value="day" className="bg-[#0f172a]">Daily</option>
+                    <option value="month" className="bg-[#0f172a]">Monthly</option>
+                </select>
+            </div>
+            <div className="flex items-center gap-2 rounded-md border border-slate-700 bg-[#1E293B] px-3 py-1.5 text-sm font-medium text-slate-200">
+                <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                </span>
+                Live
+            </div>
         </div>
       </div>
 

@@ -4,21 +4,16 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Radio, Users, LogOut, Loader2 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { data: session, isPending } = authClient.useSession()
-  const [isAuthorizing, setIsAuthorizing] = useState(true)
 
   useEffect(() => {
-    if (!isPending) {
-      if (!session) {
-        router.push("/login")
-      } else {
-        setIsAuthorizing(false)
-      }
+    if (!isPending && !session) {
+      router.push("/login")
     }
   }, [session, isPending, router])
 
@@ -38,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     })
   }
 
-  if (isPending || isAuthorizing) {
+  if (isPending || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0B1120]">
         <Loader2 className="h-8 w-8 animate-spin text-[#06b6d4]" />
