@@ -1,12 +1,19 @@
-from fastapi import FastAPI, Depends, HTTPException
-from sqlmodel import SQLModel, select, Session
+from fastapi import FastAPI, Depends, HTTPException, Query
+from sqlmodel import SQLModel, select, Session, func
 from typing import List, Optional
 import uuid
-from pydantic import BaseModel
+from datetime import datetime, timedelta
 
 from app.db import engine
-from app.models import Sensor, Measurement
-from app.schemas import SensorRead, SensorWithMeasurements, MeasurementCreate
+from app.models import Sensor, Measurement, Category, SensorCategoryLink
+from app.schemas import (
+    SensorRead, 
+    SensorWithMeasurements, 
+    MeasurementCreate, 
+    SensorCreate, 
+    SensorUpdate,
+    CategoryRead
+)
 from app.deps import get_session
 
 app = FastAPI(title="Sensor Dashboard API")
@@ -19,44 +26,110 @@ def on_startup():
 def health_check():
     return {"status": "online"}
 
+@app.get("/categories", response_model=List[CategoryRead])
+def get_categories(session: Session = Depends(get_session)):
+    return session.exec(select(Category)).all()
+
 @app.get("/sensors", response_model=List[SensorRead])
 def get_sensors(session: Session = Depends(get_session)):
     sensors = session.exec(select(Sensor)).all()
     return sensors
 
-class SensorCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    type: str
-
 @app.post("/sensors", response_model=SensorRead, status_code=201)
 def create_sensor(data: SensorCreate, session: Session = Depends(get_session)):
-    sensor = Sensor(name=data.name, description=data.description, type=data.type)
+    categories = session.exec(select(Category).where(Category.id.in_(data.category_ids))).all()
+    if not categories and data.category_ids:
+        raise HTTPException(status_code=400, detail="Invalid categories")
+    
+    sensor = Sensor(
+        name=data.name, 
+        description=data.description, 
+        type=data.type,
+        categories=categories
+    )
     session.add(sensor)
     session.commit()
     session.refresh(sensor)
     return sensor
 
-@app.get("/sensors/{sensor_id}", response_model=SensorWithMeasurements)
-def get_sensor_details(sensor_id: uuid.UUID, session: Session = Depends(get_session)):
+@app.put("/sensors/{sensor_id}", response_model=SensorRead)
+def update_sensor(sensor_id: uuid.UUID, data: SensorUpdate, session: Session = Depends(get_session)):
     sensor = session.get(Sensor, sensor_id)
     if not sensor:
         raise HTTPException(status_code=404, detail="Sensor not found")
     
-    from sqlmodel import select
-    measurements = session.exec(select(Measurement).where(Measurement.sensor_id == sensor_id).order_by(Measurement.timestamp.desc())).all()
+    if data.name is not None:
+        sensor.name = data.name
+    if data.description is not None:
+        sensor.description = data.description
+    if data.type is not None:
+        sensor.type = data.type
+    
+    if data.category_ids is not None:
+        categories = session.exec(select(Category).where(Category.id.in_(data.category_ids))).all()
+        sensor.categories = categories
+        
+    session.add(sensor)
+    session.commit()
+    session.refresh(sensor)
+    return sensor
+
+@app.delete("/sensors/{sensor_id}")
+def delete_sensor(sensor_id: uuid.UUID, session: Session = Depends(get_session)):
+    sensor = session.get(Sensor, sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    
+    measurements = session.exec(select(Measurement).where(Measurement.sensor_id == sensor_id)).all()
+    for m in measurements:
+        session.delete(m)
+    
+    session.delete(sensor)
+    session.commit()
+    return {"status": "success"}
+
+@app.get("/sensors/{sensor_id}", response_model=SensorWithMeasurements)
+def get_sensor_details(
+    sensor_id: uuid.UUID, 
+    resolution: str = Query("hour", enum=["hour", "day", "month"]),
+    session: Session = Depends(get_session)
+):
+    sensor = session.get(Sensor, sensor_id)
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    
+    trunc_map = {
+        "hour": "hour",
+        "day": "day",
+        "month": "month"
+    }
+    
+    trunc_unit = trunc_map.get(resolution, "hour")
+    
+    query = (
+        select(
+            func.date_trunc(trunc_unit, Measurement.timestamp).label("ts"),
+            func.avg(Measurement.value).label("val")
+        )
+        .where(Measurement.sensor_id == sensor_id)
+        .group_by("ts")
+        .order_by("ts")
+    )
+    
+    results = session.exec(query).all()
     
     return {
         "id": sensor.id,
         "name": sensor.name,
         "description": sensor.description,
         "type": sensor.type,
+        "categories": sensor.categories,
         "measurements": [
             {
-                "id": m.id,
-                "value": m.value,
-                "timestamp": m.timestamp
-            } for m in measurements
+                "id": uuid.uuid4(),
+                "value": round(float(row.val), 2),
+                "timestamp": row.ts
+            } for row in results
         ]
     }
 
@@ -71,13 +144,7 @@ def ingest_measurement(data: MeasurementCreate, session: Session = Depends(get_s
     session.commit()
     return {"status": "success"}
 
-class UserRead(BaseModel):
-    id: str
-    name: str
-    email: str
-    role: Optional[str] = None
-
-@app.get("/users", response_model=List[UserRead])
+@app.get("/users")
 def get_users(session: Session = Depends(get_session)):
     from sqlalchemy import text
     try:
