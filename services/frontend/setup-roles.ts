@@ -16,29 +16,29 @@ const auth = betterAuth({
 
 async function main() {
   try {
-    await pool.query("DELETE FROM \"user\" WHERE email IN (\$1, \$2)", ["admin@uoi.gr", "user@uoi.gr"])
+    await pool.query("DELETE FROM \"user\" WHERE email IN (\$1, \$2, \$3, \$4)", ["admin@uoi.gr", "user@uoi.gr", "admin@orailab.gr", "user@orailab.gr"])
 
     await auth.api.signUpEmail({
       body: {
-        email: "admin@uoi.gr",
+        email: "admin@orailab.gr",
         password: "adminpassword",
-        name: "UoI Admin"
+        name: "Administrator"
       }
     })
     console.log("Admin account registered...")
 
     await auth.api.signUpEmail({
       body: {
-        email: "user@uoi.gr",
+        email: "user@orailab.gr",
         password: "userpassword",
-        name: "UoI Student"
+        name: "Operator"
       }
     })
     console.log("User account registered...")
 
-    await pool.query("UPDATE \"user\" SET role = 'admin' WHERE email = 'admin@uoi.gr'")
-    await pool.query("UPDATE \"user\" SET role = 'user' WHERE email = 'user@uoi.gr'")
-    console.log("Roles successfully assigned in the database!")
+    await pool.query("UPDATE \"user\" SET role = 'admin', username = 'admin' WHERE email = 'admin@orailab.gr'")
+    await pool.query("UPDATE \"user\" SET role = 'user', username = 'user' WHERE email = 'user@orailab.gr'")
+    console.log("Roles and usernames successfully assigned in the database!")
 
     process.exit(0)
   } catch (error) {

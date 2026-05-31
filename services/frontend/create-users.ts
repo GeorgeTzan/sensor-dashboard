@@ -26,8 +26,8 @@ async function createAccount(email: string, name: string, password: string) {
 }
 
 async function main() {
-  await createAccount("admin@uoi.gr", "UoI Admin", "adminpassword")
-  await createAccount("user@uoi.gr", "UoI Student", "userpassword")
+  await createAccount("admin@orailab.gr", "Administrator", "adminpassword")
+  await createAccount("user@orailab.gr", "Operator", "userpassword")
   process.exit(0)
 }
 

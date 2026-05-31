@@ -45,6 +45,12 @@ const fetchUsers = async (): Promise<User[]> => {
   return res.json()
 }
 
+const fetchStats = async () => {
+  const res = await fetch("/api/proxy/stats")
+  if (!res.ok) throw new Error("Failed to fetch stats")
+  return res.json()
+}
+
 export default function DashboardPage() {
   const { data: session } = authClient.useSession()
   const isAdmin = session?.user?.role === "admin"
@@ -60,10 +66,16 @@ export default function DashboardPage() {
     enabled: isAdmin
   })
 
-  const totalSensors = sensors?.length || 0
-  const avgTemp = sensors ? "24.5°C" : "--"
-  const avgHumidity = sensors ? "48%" : "--"
-  const activeAlerts = sensors ? 2 : 0
+  const { data: stats } = useQuery({
+    queryKey: ["stats"],
+    queryFn: fetchStats,
+    refetchInterval: 30000
+  })
+
+  const totalSensors = stats ? stats.total_sensors : (sensors ? sensors.length : 0)
+  const avgTemp = stats ? String(stats.avg_temp) + "°C" : "--"
+  const avgHumidity = stats ? String(stats.avg_humidity) + "%" : "--"
+  const activeAlerts = stats ? stats.active_alerts : 0
 
   const pieData = useMemo(() => {
     if (!sensors) return []

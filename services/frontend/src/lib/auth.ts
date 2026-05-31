@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth"
-import { admin } from "better-auth/plugins"
+import { admin, username } from "better-auth/plugins"
 import pg from "pg"
 
 const pool = new pg.Pool({
@@ -9,9 +9,6 @@ const pool = new pg.Pool({
 export const auth = betterAuth({
   database: pool,
   trustedOrigins: ["http://localhost:3000", "https://sensor.orailab.gr", "http://sensor.orailab.gr"],
-  advanced: { 
-    useRuntimeURL: true,
-  },
   session: {
     cookieCache: {
         enabled: true,
@@ -27,6 +24,7 @@ export const auth = betterAuth({
     enabled: true,
   },
   plugins: [
-    admin()
+    admin(),
+    username()
   ]
 })

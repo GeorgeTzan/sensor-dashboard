@@ -37,8 +37,11 @@ def get_sensors(session: Session = Depends(get_session)):
 
 @app.post("/sensors", response_model=SensorRead, status_code=201)
 def create_sensor(data: SensorCreate, session: Session = Depends(get_session)):
+    if not data.category_ids:
+        raise HTTPException(status_code=400, detail="At least one category is required")
+        
     categories = session.exec(select(Category).where(Category.id.in_(data.category_ids))).all()
-    if not categories and data.category_ids:
+    if not categories:
         raise HTTPException(status_code=400, detail="Invalid categories")
     
     sensor = Sensor(
@@ -133,6 +136,36 @@ def get_sensor_details(
         ]
     }
 
+@app.get("/stats")
+def get_stats(session: Session = Depends(get_session)):
+    total_sensors = session.exec(select(func.count(Sensor.id))).one()
+    
+    avg_temp_query = (
+        select(func.avg(Measurement.value))
+        .join(Sensor)
+        .where(Sensor.type == "TEMPERATURE")
+    )
+    avg_temp = session.exec(avg_temp_query).one()
+    
+    avg_hum_query = (
+        select(func.avg(Measurement.value))
+        .join(Sensor)
+        .where(Sensor.type == "HUMIDITY")
+    )
+    avg_hum = session.exec(avg_hum_query).one()
+    
+    alerts_query = select(func.count(Measurement.id)).where(
+        (Measurement.value > 40) | (Measurement.value < 0)
+    )
+    active_alerts = session.exec(alerts_query).one()
+
+    return {
+        "total_sensors": total_sensors,
+        "avg_temp": round(float(avg_temp), 1) if avg_temp is not None else 0,
+        "avg_humidity": round(float(avg_hum), 1) if avg_hum is not None else 0,
+        "active_alerts": active_alerts
+    }
+
 @app.post("/measurements/ingest", status_code=201)
 def ingest_measurement(data: MeasurementCreate, session: Session = Depends(get_session)):
     sensor = session.get(Sensor, data.sensor_id)
@@ -148,10 +181,10 @@ def ingest_measurement(data: MeasurementCreate, session: Session = Depends(get_s
 def get_users(session: Session = Depends(get_session)):
     from sqlalchemy import text
     try:
-        result = session.exec(text("SELECT id, name, email, role FROM \"user\"")).all()
-        users = [{"id": row[0], "name": row[1], "email": row[2], "role": row[3]} for row in result]
+        result = session.exec(text("SELECT id, name, email, role, username FROM \"user\"")).all()
+        users = [{"id": row[0], "name": row[1], "email": row[2], "role": row[3], "username": row[4]} for row in result]
     except Exception:
         session.rollback()
-        result = session.exec(text("SELECT id, name, email FROM \"user\"")).all()
-        users = [{"id": row[0], "name": row[1], "email": row[2], "role": "user"} for row in result]
+        result = session.exec(text("SELECT id, name, email, username FROM \"user\"")).all()
+        users = [{"id": row[0], "name": row[1], "email": row[2], "role": "user", "username": row[3]} for row in result]
     return users

@@ -14,9 +14,9 @@ async function main() {
   try {
     await auth.api.signUpEmail({
       body: {
-        email: "gtzan@orailab.gr",
-        password: "kyrite123",
-        name: "George Tzan"
+        email: "admin@orailab.gr",
+        password: "adminpassword",
+        name: "Administrator"
       }
     })
     console.log("Admin created successfully!")

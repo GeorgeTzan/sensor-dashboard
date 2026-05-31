@@ -14,6 +14,8 @@ services:
       context: ./services/backend
       dockerfile: Dockerfile
     container_name: sensor-backend
+    ports:
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://${DB_USER:-admin}:${DB_PASSWORD:-admin123}@db:5432/${DB_NAME:-sensor_dashboard}
     depends_on:

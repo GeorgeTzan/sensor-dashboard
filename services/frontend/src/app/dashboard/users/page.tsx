@@ -9,7 +9,8 @@ interface User {
   id: string
   name: string
   email: string
-  role: string
+  role: "user" | "admin"
+  username?: string
 }
 
 export default function UsersPage() {
@@ -21,8 +22,9 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    username: "",
     password: "",
-    role: "user"
+    role: "user" as "user" | "admin"
   })
 
   useEffect(() => {
@@ -42,7 +44,8 @@ export default function UsersPage() {
             id: u.id,
             name: u.name,
             email: u.email,
-            role: u.role || 'user'
+            role: (u.role as "user" | "admin") || 'user',
+            username: (u as any).username
         }))
     }
   })
@@ -53,7 +56,10 @@ export default function UsersPage() {
             email: data.email,
             password: data.password,
             name: data.name,
-            role: data.role
+            role: data.role,
+            data: {
+                username: data.username
+            }
         })
         if (res.error) throw new Error(res.error.message)
         return res.data
@@ -96,6 +102,7 @@ export default function UsersPage() {
     setFormData({
         name: user.name,
         email: user.email,
+        username: user.username || "",
         password: "",
         role: user.role
     })
@@ -106,7 +113,7 @@ export default function UsersPage() {
     setIsDrawerOpen(false)
     setTimeout(() => {
         setSelectedUser(null)
-        setFormData({ name: "", email: "", password: "", role: "user" })
+        setFormData({ name: "", email: "", username: "", password: "", role: "user" as "user" | "admin" })
     }, 300)
   }
 
@@ -151,6 +158,7 @@ export default function UsersPage() {
               <tr className="border-b border-slate-700 bg-[#0f172a] text-xs font-semibold text-slate-400">
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Email</th>
+                <th className="px-4 py-2">Username</th>
                 <th className="px-4 py-2">Clearance</th>
                 <th className="px-4 py-2 text-right">Actions</th>
               </tr>
@@ -173,6 +181,7 @@ export default function UsersPage() {
                   <tr key={user.id} className="hover:bg-[#0B1120] transition-colors">
                     <td className="px-4 py-2 font-medium text-slate-200">{user.name}</td>
                     <td className="px-4 py-2 text-slate-400">{user.email}</td>
+                    <td className="px-4 py-2 text-slate-500 font-mono text-xs">{user.username || '-'}</td>
                     <td className="px-4 py-2">
                       <span className="flex items-center gap-1 text-xs text-slate-300">
                         <Shield className="h-3 w-3 text-[#06b6d4]" />
@@ -235,6 +244,17 @@ export default function UsersPage() {
                 />
               </div>
               <div>
+                <label className="mb-1 block text-xs font-medium text-slate-400">Username</label>
+                <input 
+                  type="text" 
+                  required
+                  value={formData.username}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
+                  disabled={!!selectedUser}
+                  className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4] disabled:opacity-50"
+                />
+              </div>
+              <div>
                 <label className="mb-1 block text-xs font-medium text-slate-400">Email Address</label>
                 <input 
                   type="email" 
@@ -261,7 +281,7 @@ export default function UsersPage() {
                 <label className="mb-1 block text-xs font-medium text-slate-400">Clearance Level</label>
                 <select 
                   value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
+                  onChange={(e) => setFormData({...formData, role: e.target.value as "user" | "admin"})}
                   className="w-full rounded-md border border-slate-700 bg-[#0B1120] px-3 py-2 text-sm text-slate-200 focus:border-[#06b6d4] focus:outline-none focus:ring-1 focus:ring-[#06b6d4]"
                 >
                   <option value="admin">Administrator</option>

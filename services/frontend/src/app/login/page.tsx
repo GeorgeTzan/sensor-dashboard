@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client"
 import { GraduationCap, Loader2 } from "lucide-react"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -18,16 +18,27 @@ export default function LoginPage() {
     setError("")
 
     try {
-      await authClient.signIn.email({
-        email,
+      await authClient.signIn.username({
+        username,
         password,
         callbackURL: "/dashboard"
       }, {
         onSuccess: () => {
           router.push("/dashboard")
         },
-        onError: (ctx) => {
-          setError(ctx.error.message || "Invalid credentials")
+        onError: async (ctx) => {
+            if (username.includes("@")) {
+                await authClient.signIn.email({
+                    email: username,
+                    password,
+                    callbackURL: "/dashboard"
+                }, {
+                    onSuccess: () => router.push("/dashboard"),
+                    onError: (ctx2) => setError(ctx2.error.message || "Invalid credentials")
+                })
+            } else {
+                setError(ctx.error.message || "Invalid credentials")
+            }
         }
       })
     } catch (err) {
@@ -50,17 +61,17 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 block" htmlFor="email">
-              University Email
+            <label className="text-sm font-medium text-slate-700 block" htmlFor="username">
+              Username or Email
             </label>
             <input
-              id="email"
-              type="email"
+              id="username"
+              type="text"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border-0 rounded-md focus:ring-2 focus:ring-[#003366] text-slate-900 transition-all outline-none"
-              placeholder="e.g. researcher@uoi.gr"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. gtzan"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
             />
           </div>
 

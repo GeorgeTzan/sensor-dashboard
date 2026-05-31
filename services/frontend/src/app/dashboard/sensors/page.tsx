@@ -336,7 +336,7 @@ export default function SensorsPage() {
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending || formData.category_ids.length === 0}
                 className="w-full flex items-center justify-center rounded-md bg-[#06b6d4] px-4 py-2 text-sm font-semibold text-[#0f172a] hover:bg-[#0891b2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {(createMutation.isPending || updateMutation.isPending) ? (
@@ -348,6 +348,9 @@ export default function SensorsPage() {
                   editingSensor ? "Update Details" : "Create Node"
                 )}
               </button>
+              {formData.category_ids.length === 0 && (
+                <p className="text-[10px] text-rose-400 mt-2 text-center">At least one category is required</p>
+              )}
             </div>
           </form>
         </div>
